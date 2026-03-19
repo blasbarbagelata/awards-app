@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  type        String   @default("normal")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  votes       Vote[]
+}
+
+model Candidate {
+  id        String   @id @default(cuid())
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  votes     Vote[]
+}
+
+model VoteCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  label     String?
+  isTest    Boolean   @default(false)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  votes     Vote[]
+}
+
+model Vote {
+  id          String   @id @default(cuid())
+  voteCodeId  String
+  categoryId  String
+  candidateId String
+  position    Int
+  points      Int
+  createdAt   DateTime @default(now())
+
+  voteCode    VoteCode  @relation(fields: [voteCodeId], references: [id])
+  category    Category  @relation(fields: [categoryId], references: [id])
+  candidate   Candidate @relation(fields: [candidateId], references: [id])
+
+  @@unique([voteCodeId, categoryId, position])
+  @@unique([voteCodeId, categoryId, candidateId])
+}
+
+model Election {
+  id        String   @id @default(cuid())
+  isOpen    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
