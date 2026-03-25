@@ -102,7 +102,11 @@ export default function ResultadosPage() {
         <div className="max-w-3xl mx-auto px-4 py-8 text-center">
           <div className="text-5xl mb-4">🏆</div>
           <h1 className="font-serif text-4xl md:text-5xl shimmer-text mb-2">Resultados</h1>
-          <p className="text-white/40 text-sm">Gala de Amigos · Los Premios</p>
+          <a href="/admin/dashboard"
+  className="text-white/20 hover:text-white/50 text-xs mt-2 inline-block transition-colors"
+>
+  ← Admin
+</a>
           {lastUpdated && (
             <p className="text-white/20 text-xs mt-2">
               Actualizado: {lastUpdated.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}

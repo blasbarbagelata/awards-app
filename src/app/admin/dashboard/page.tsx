@@ -110,9 +110,18 @@ export default function AdminDashboardPage() {
             <span className="text-white/20">·</span>
             <span className="text-white/40 text-sm">Los Premios</span>
           </div>
-          <button onClick={handleLogout} className="btn-ghost px-4 py-2 text-sm rounded-lg">
-            Cerrar sesión
-          </button>
+          <div className="flex items-center gap-2">
+  
+    <a href="/resultados"
+    target="_blank"
+    className="btn-ghost px-4 py-2 text-sm rounded-lg text-gold/70 hover:text-gold"
+  >
+    Ver resultados ↗
+  </a>
+  <button onClick={handleLogout} className="btn-ghost px-4 py-2 text-sm rounded-lg">
+    Cerrar sesión
+  </button>
+  </div>    
         </div>
       </header>
 
