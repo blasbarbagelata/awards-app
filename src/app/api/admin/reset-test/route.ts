@@ -8,31 +8,23 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Find all test vote codes
-    const testCodes = await prisma.voteCode.findMany({
-      where: { isTest: true },
-      select: { id: true },
-    })
+    // Borrar todos los votos
+    const deletedVotes = await prisma.vote.deleteMany({})
 
-    const testCodeIds = testCodes.map((c) => c.id)
+    // Borrar todos los códigos
+    const deletedCodes = await prisma.voteCode.deleteMany({})
 
-    // Delete all votes from test codes
-    const deletedVotes = await prisma.vote.deleteMany({
-      where: { voteCodeId: { in: testCodeIds } },
-    })
-
-    // Reset usedAt for all test codes
-    const resetResult = await prisma.voteCode.updateMany({
-      where: { isTest: true },
-      data: { usedAt: null },
+    // Cerrar la votación
+    await prisma.election.updateMany({
+      data: { isOpen: false },
     })
 
     return NextResponse.json({
       deletedVotes: deletedVotes.count,
-      resetCodes: resetResult.count,
+      deletedCodes: deletedCodes.count,
     })
   } catch (error) {
     console.error('POST /api/admin/reset-test error:', error)
-    return NextResponse.json({ error: 'Error al resetear votos de prueba.' }, { status: 500 })
+    return NextResponse.json({ error: 'Error al resetear.' }, { status: 500 })
   }
 }

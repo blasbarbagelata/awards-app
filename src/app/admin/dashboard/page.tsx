@@ -206,13 +206,18 @@ function ResumenSection() {
     }
   }
 
-  async function resetTestVotes() {
+  async function resetTotal() {
     setResetting(true)
     try {
-      const res = await fetch('/api/admin/reset-test', { method: 'POST' })
+      const res = await fetch('/api/admin/reset-total', { method: 'POST' })
       const data = await res.json()
-      setMessage(`Votos de prueba eliminados: ${data.deletedVotes}. Códigos restablecidos: ${data.resetCodes}.`)
-      setTimeout(() => setMessage(''), 5000)
+      if (res.ok) {
+        setMessage(`Reset total completado. Votos eliminados: ${data.deletedVotes}. Códigos eliminados: ${data.deletedCodes}.`)
+        await fetchStats()
+        setTimeout(() => setMessage(''), 6000)
+      } else {
+        setMessage(`Error: ${data.error}`)
+      }
       setResetConfirm(false)
     } finally {
       setResetting(false)
@@ -275,28 +280,33 @@ function ResumenSection() {
         ))}
       </div>
 
-      {/* Reset test votes */}
-      <div className="card rounded-xl p-6">
-        <h3 className="text-white font-semibold mb-2">Votos de prueba</h3>
-        <p className="text-white/40 text-sm mb-4">
-          Elimina todos los votos emitidos con códigos de prueba y restablece esos códigos para poder usarlos de nuevo.
+      {/* Reset total */}
+      <div className="card rounded-xl border border-red-900/40 p-6">
+        <h3 className="text-red-400 font-semibold mb-2">⚠ Reset total</h3>
+        <p className="text-white/50 text-sm mb-1">
+          Elimina <span className="text-white/80 font-medium">todos los votos</span> y{' '}
+          <span className="text-white/80 font-medium">todos los códigos de acceso</span> (reales y de prueba), y cierra
+          la votación si estaba abierta.
         </p>
+        <p className="text-white/30 text-xs mb-4">Las categorías y candidatos no se ven afectados.</p>
         {!resetConfirm ? (
           <button
             onClick={() => setResetConfirm(true)}
             className="btn-ghost px-4 py-2 text-sm rounded-lg border-red-500/50 text-red-400 hover:bg-red-900/20"
           >
-            Resetear votos de prueba
+            Reset total
           </button>
         ) : (
-          <div className="flex items-center gap-3">
-            <span className="text-white/60 text-sm">¿Confirmar?</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-red-300/80 text-sm font-medium">
+              ¿Seguro? Esto borrará todos los votos y códigos sin posibilidad de recuperación.
+            </span>
             <button
-              onClick={resetTestVotes}
+              onClick={resetTotal}
               disabled={resetting}
               className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
             >
-              {resetting ? 'Reseteando...' : 'Sí, resetear'}
+              {resetting ? 'Reseteando...' : 'Sí, borrar todo'}
             </button>
             <button onClick={() => setResetConfirm(false)} className="btn-ghost px-4 py-2 text-sm rounded-lg">
               Cancelar
