@@ -25,6 +25,9 @@ export default function ResultadosPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  // Guarda qué categorías están reveladas y cuántos candidatos se muestran
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({})
+  const [visibleCount, setVisibleCount] = useState<Record<string, number>>({})
 
   async function fetchResults() {
     try {
@@ -48,6 +51,19 @@ export default function ResultadosPage() {
     const interval = setInterval(fetchResults, 30000)
     return () => clearInterval(interval)
   }, [])
+
+  function revelarCategoria(categoryId: string, totalWithVotes: number) {
+    setRevealed((prev) => ({ ...prev, [categoryId]: true }))
+    // Empieza mostrando solo el último (menos puntos)
+    setVisibleCount((prev) => ({ ...prev, [categoryId]: 1 }))
+  }
+
+  function mostrarSiguiente(categoryId: string, totalWithVotes: number) {
+    setVisibleCount((prev) => {
+      const current = prev[categoryId] ?? 1
+      return { ...prev, [categoryId]: Math.min(current + 1, totalWithVotes) }
+    })
+  }
 
   if (loading) {
     return (
@@ -78,12 +94,10 @@ export default function ResultadosPage() {
 
   return (
     <div className="min-h-screen bg-dark">
-      {/* Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gold/3 rounded-full blur-3xl" />
       </div>
 
-      {/* Header */}
       <header className="relative z-10 border-b border-dark-border bg-dark/80 backdrop-blur-sm">
         <div className="max-w-3xl mx-auto px-4 py-8 text-center">
           <div className="text-5xl mb-4">🏆</div>
@@ -114,94 +128,151 @@ export default function ResultadosPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-8">
-            {results.map((result, catIndex) => (
-              <div
-                key={result.category.id}
-                className="rounded-xl border border-dark-border bg-dark-card overflow-hidden"
-              >
-                {/* Category header */}
-                <div className="px-6 py-5 border-b border-dark-border bg-dark-surface">
-                  <div className="flex items-start gap-3">
-                    <span className="text-gold/40 font-mono text-sm mt-1">#{catIndex + 1}</span>
-                    <div>
-                      <h2 className="font-serif text-2xl text-white mb-1">{result.category.name}</h2>
-                      <p className="text-white/40 text-sm">{result.category.description}</p>
+          <div className="space-y-6">
+            {results.map((result, catIndex) => {
+              const isRevealed = revealed[result.category.id] ?? false
+              // Solo candidatos con al menos 1 punto, ordenados de menor a mayor
+              const rankingsWithVotes = [...result.rankings]
+                .filter((r) => r.points > 0)
+                .sort((a, b) => a.points - b.points)
+              const totalWithVotes = rankingsWithVotes.length
+              const count = visibleCount[result.category.id] ?? 1
+              // Los que se muestran: tomamos los últimos `count` del array (de menos a más)
+              const visible = rankingsWithVotes.slice(totalWithVotes - count)
+              const allRevealed = count >= totalWithVotes
+
+              return (
+                <div
+                  key={result.category.id}
+                  className="rounded-xl border border-dark-border bg-dark-card overflow-hidden"
+                >
+                  {/* Category header — siempre visible */}
+                  <div className="px-6 py-5 border-b border-dark-border bg-dark-surface">
+                    <div className="flex items-start gap-3">
+                      <span className="text-gold/40 font-mono text-sm mt-1">#{catIndex + 1}</span>
+                      <div>
+                        <h2 className="font-serif text-2xl text-white mb-1">{result.category.name}</h2>
+                        <p className="text-white/40 text-sm">{result.category.description}</p>
+                      </div>
                     </div>
+                    {result.hasTie && isRevealed && allRevealed && (
+                      <div className="mt-3 flex items-center gap-2 text-gold/60 text-xs">
+                        <span>⚡</span>
+                        <span>Hay empate en el primer lugar</span>
+                      </div>
+                    )}
                   </div>
-                  {result.hasTie && (
-                    <div className="mt-3 flex items-center gap-2 text-gold/60 text-xs">
-                      <span>⚡</span>
-                      <span>Hay empate en el primer lugar</span>
-                    </div>
-                  )}
-                </div>
 
-                {/* Rankings */}
-                <div className="p-4 space-y-3">
-                  {result.rankings.length === 0 ? (
-                    <p className="text-white/30 text-center py-4 text-sm">Sin votos registrados</p>
-                  ) : (
-                    result.rankings.map((ranking, idx) => {
-                      const config = POSITION_CONFIG[idx] || {
-                        emoji: '·',
-                        label: `${idx + 1}º lugar`,
-                        bg: 'bg-dark-surface',
-                        border: 'border-dark-border',
-                        text: 'text-white/40',
-                      }
-                      const isFirst = idx === 0
-                      const isTied = result.hasTie && idx < 2 && result.rankings[0].points === ranking.points
-
-                      return (
-                        <div
-                          key={`${ranking.candidate.id}-${idx}`}
-                          className={`flex items-center gap-4 px-4 py-3 rounded-lg border transition-all ${config.bg} ${config.border} ${
-                            isFirst ? 'shadow-lg shadow-gold/10' : ''
-                          }`}
+                  {/* Contenido */}
+                  <div className="p-6">
+                    {!isRevealed ? (
+                      // Estado oculto
+                      <div className="text-center py-6">
+                        <div className="text-4xl mb-4">🔒</div>
+                        <p className="text-white/40 text-sm mb-6">
+                          Los resultados están ocultos
+                        </p>
+                        <button
+                          onClick={() => revelarCategoria(result.category.id, totalWithVotes)}
+                          className="btn-gold px-8 py-3 rounded-lg font-semibold text-sm"
                         >
-                          {/* Position */}
-                          <div className="flex-shrink-0 text-2xl">{config.emoji}</div>
+                          Revelar resultados ✨
+                        </button>
+                      </div>
+                    ) : (
+                      // Estado revelado
+                      <div className="space-y-3">
+                        {totalWithVotes === 0 ? (
+                          <p className="text-white/30 text-center py-4 text-sm">Sin votos registrados</p>
+                        ) : (
+                          <>
+                            {visible.map((ranking) => {
+                              // Posición real en el ranking final (de más a menos puntos)
+                              const realIdx = rankingsWithVotes
+                                .slice()
+                                .sort((a, b) => b.points - a.points)
+                                .findIndex((r) => r.candidate.id === ranking.candidate.id)
+                              const isFirst = realIdx === 0 && allRevealed
+                              const config = POSITION_CONFIG[realIdx] || {
+                                emoji: `${realIdx + 1}.`,
+                                label: `${realIdx + 1}º lugar`,
+                                bg: 'bg-dark-surface',
+                                border: 'border-dark-border',
+                                text: 'text-white/40',
+                              }
 
-                          {/* Name */}
-                          <div className="flex-1 min-w-0">
-                            <p className={`font-semibold text-base truncate ${isFirst ? 'text-white' : 'text-white/70'}`}>
-                              {ranking.candidate.name}
-                              {isTied && idx > 0 && (
-                                <span className="ml-2 text-gold/50 text-xs font-normal">empate</span>
-                              )}
-                            </p>
-                            <p className={`text-xs ${config.text}`}>{config.label}</p>
-                          </div>
+                              return (
+                                <div
+                                  key={ranking.candidate.id}
+                                  className={`flex items-center gap-4 px-4 py-3 rounded-lg border transition-all ${
+                                    isFirst
+                                      ? `${config.bg} ${config.border} shadow-lg shadow-gold/10`
+                                      : 'bg-dark-surface border-dark-border'
+                                  }`}
+                                >
+                                  <div className="flex-shrink-0 text-2xl">
+                                    {allRevealed ? config.emoji : '·'}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`font-semibold text-base truncate ${isFirst ? 'text-white' : 'text-white/70'}`}>
+                                      {ranking.candidate.name}
+                                    </p>
+                                    {allRevealed && (
+                                      <p className={`text-xs ${config.text}`}>{config.label}</p>
+                                    )}
+                                  </div>
+                                  <div className={`flex-shrink-0 text-right ${isFirst ? 'text-gold' : 'text-white/40'}`}>
+                                    <p className="font-bold text-lg">{ranking.points}</p>
+                                    <p className="text-xs text-white/30">pts</p>
+                                  </div>
+                                  {allRevealed && (
+                                    <div className="flex-shrink-0 hidden sm:block w-24">
+                                      <div className="h-1.5 bg-dark-border rounded-full overflow-hidden">
+                                        <div
+                                          className={`h-full rounded-full transition-all duration-700 ${isFirst ? 'bg-gold' : 'bg-white/20'}`}
+                                          style={{
+                                            width: `${
+                                              rankingsWithVotes.sort((a, b) => b.points - a.points)[0].points > 0
+                                                ? (ranking.points / rankingsWithVotes.sort((a, b) => b.points - a.points)[0].points) * 100
+                                                : 0
+                                            }%`,
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
 
-                          {/* Points */}
-                          <div className={`flex-shrink-0 text-right ${config.text}`}>
-                            <p className={`font-bold text-lg ${isFirst ? 'text-gold' : ''}`}>
-                              {ranking.points}
-                            </p>
-                            <p className="text-xs text-white/30">pts</p>
-                          </div>
+                            {/* Botón para revelar el siguiente */}
+                            {!allRevealed && (
+                              <div className="text-center pt-4">
+                                <p className="text-white/30 text-xs mb-3">
+                                  Mostrando {count} de {totalWithVotes} candidatos con votos
+                                </p>
+                                <button
+                                  onClick={() => mostrarSiguiente(result.category.id, totalWithVotes)}
+                                  className="btn-gold px-6 py-2 rounded-lg text-sm font-semibold"
+                                >
+                                  Siguiente ▲
+                                </button>
+                              </div>
+                            )}
 
-                          {/* Bar */}
-                          <div className="flex-shrink-0 hidden sm:block w-24">
-                            <div className="h-1.5 bg-dark-border rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-700 ${
-                                  isFirst ? 'bg-gold' : 'bg-white/20'
-                                }`}
-                                style={{
-                                  width: `${result.rankings[0].points > 0 ? (ranking.points / result.rankings[0].points) * 100 : 0}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })
-                  )}
+                            {allRevealed && (
+                              <div className="text-center pt-2">
+                                <p className="text-gold/40 text-xs">✦ Resultados completos</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
