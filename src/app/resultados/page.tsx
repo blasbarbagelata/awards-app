@@ -138,7 +138,7 @@ export default function ResultadosPage() {
               const totalWithVotes = rankingsWithVotes.length
               const count = visibleCount[result.category.id] ?? 1
               // Los que se muestran: tomamos los últimos `count` del array (de menos a más)
-              const visible = rankingsWithVotes.slice(totalWithVotes - count)
+              const visible = rankingsWithVotes.slice(0, count)
               const allRevealed = count >= totalWithVotes
 
               return (
